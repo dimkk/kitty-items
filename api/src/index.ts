@@ -10,6 +10,11 @@ import { MarketService } from "./services/market";
 import { BlockCursorService } from "./services/block-cursor";
 import { SaleOfferHandler } from "./workers/sale-offer-handler";
 
+import { AkasService } from './services/akas'
+import { MirrorItemsService } from './services/mirror-items'
+import { MirrorMarketService } from './services/mirror-market'
+import { MirrorSaleOfferHandler } from './workers/mirror-sale-offer-handler'
+
 let knexInstance: Knex;
 
 async function run() {
@@ -49,7 +54,20 @@ async function run() {
     config.minterAddress
   );
 
+  const akasService = new AkasService(
+    flowService,
+    config.fungibleTokenAddress,
+    config.minterAddress
+  );
+
+
   const kittyItemsService = new KittyItemsService(
+    flowService,
+    config.nonFungibleTokenAddress,
+    config.minterAddress
+  );
+
+  const mirrorItemsService = new MirrorItemsService(
     flowService,
     config.nonFungibleTokenAddress,
     config.minterAddress
@@ -63,8 +81,18 @@ async function run() {
     config.minterAddress,
     config.minterAddress
   );
+
+  const mirrorMarketService = new MirrorMarketService(
+    flowService,
+    config.fungibleTokenAddress,
+    config.minterAddress,
+    config.nonFungibleTokenAddress,
+    config.minterAddress,
+    config.minterAddress
+  );
   
   const eventSaleOfferCreated = `A.${fcl.sansPrefix(config.minterAddress)}.KittyItemsMarket.SaleOfferCreated`;
+  const eventMirrorSaleOfferCreated = `A.${fcl.sansPrefix(config.minterAddress)}.MirrorItemsMarket.SaleOfferCreated`;
 
   const blockCursorService = new BlockCursorService();
 
@@ -75,11 +103,21 @@ async function run() {
     eventSaleOfferCreated  
   );
 
+  const mirrorSaleOfferWorker = new MirrorSaleOfferHandler(
+    blockCursorService,
+    flowService,
+    mirrorMarketService,
+    eventMirrorSaleOfferCreated  
+  );
+
   const app = initApp(
     knexInstance,
     kibblesService,
     kittyItemsService,
-    marketService
+    marketService,
+    akasService,
+    mirrorItemsService,
+    mirrorMarketService
   );
 
   app.listen(config.port, () => {
@@ -87,6 +125,7 @@ async function run() {
   });
 
   saleOfferWorker.run()
+  mirrorSaleOfferWorker.run()
 }
 
 const redOutput = "\x1b[31m%s\x1b[0m";

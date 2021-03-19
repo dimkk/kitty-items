@@ -4,11 +4,11 @@ import ReactDOM from "react-dom"
 import reportWebVitals from "./reportWebVitals"
 import {Switch, Route} from "react-router-dom"
 
-import {Providers} from "./global/providers.comp"
+import {Providers} from "./global/mirror.providers.comp"
 
-import {Page as Root} from "./pages/root.page"
-import {Page as Account} from "./pages/account"
-import {Page as NotFound} from "./pages/not-found.page"
+import {Page as Root} from "./mirror-pages/root.page"
+import {Page as Account} from "./mirror-pages/account"
+import {Page as NotFound} from "./mirror-pages/not-found.page"
 
 import * as fcl from "@onflow/fcl"
 import * as t from "@onflow/types"

@@ -1,0 +1,191 @@
+import {Suspense} from "react"
+import {Base} from "../../mirror-parts/base.comp"
+import {IDLE} from "../../global/constants"
+import {useAddress} from "../../mirror-hooks/use-url-address.hook"
+import {useCurrentUser} from "../../mirror-hooks/use-current-user.hook"
+import {useMarketItems} from "../../mirror-hooks/use-market-items.hook"
+import {useAccountItems} from "../../mirror-hooks/use-account-items.hook"
+import {useInitialized} from "../../mirror-hooks/use-initialized.hook"
+import {useAkasBalance} from "../../mirror-hooks/use-akas-balance.hook"
+import AuthCluster from "../../mirror-parts/auth-cluster.comp"
+import InitCluster from "../../mirror-parts/init-cluster.comp" 
+import BalanceCluster from "../../mirror-parts/balance-cluster.comp"
+import MarketItemsCluster from "../../mirror-parts/market-items-cluster.comp"
+import AccountItemsCluster from "../../mirror-parts/account-items-cluster.comp"
+import {
+  Alert,
+  AlertIcon,
+  AlertTitle,
+  Box,
+  Badge,
+  Flex,
+  Center,
+  Tag,
+  Text,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
+  Spinner,
+  Button,
+  HStack,
+  Image,
+} from "@chakra-ui/react"
+
+import Cookie from "../../svg/cookie.svg"
+import BackPack from "../../svg/backpack.svg"
+
+const STORE_ADDRESS = process.env.REACT_APP_STORE_ADDRESS
+
+export function MarketItemsCount({address}) {
+  const items = useMarketItems(address)
+  if (items.status !== IDLE) return <Spinner size="xs" ml="1" />
+  const l = items?.ids?.length ?? 0
+  return l > 0 ? <Tag ml="1">{l}</Tag> : null
+}
+
+export function AccountItemsCount({address}) {
+  const items = useAccountItems(address)
+  if (items.status !== IDLE) return <Spinner size="xs" ml="1" />
+  const l = items?.ids?.length ?? 0
+  return l > 0 ? <Tag ml="1">{l}</Tag> : null
+}
+
+export function StoreItemsCount() {
+  const items = useMarketItems(STORE_ADDRESS)
+  if (items.status !== IDLE) return <Spinner size="xs" ml="1" />
+  const l = items?.ids?.length ?? 0
+  return l > 0 ? <Tag ml="1">{l}</Tag> : null
+}
+
+export function MintButton({address}) {
+  const items = useAccountItems(address)
+
+  return (
+    <Button disabled={items.status !== IDLE} onClick={items.mint}>
+      Mint Item
+    </Button>
+  )
+}
+
+export function InfoBanner({address}) {
+  const init = useInitialized(address)
+  const akas = useAkasBalance(address)
+  const [cu] = useCurrentUser()
+
+  const status = {
+    notInitialized: {
+      type: "info",
+      title: "Initialize Your Account",
+      text:
+        "You need to initialize your account before you can receive Akas.",
+    },
+    noAka: {
+      type: "info",
+      title: "Get Aka",
+      text: "You need Aka to buy Mirror Items.",
+    },
+  }
+
+  function Banner(message) {
+    return (
+      <Flex my="4">
+        <Alert status={message.type}>
+          <AlertIcon />
+          <AlertTitle mr={2}>{message.title}</AlertTitle>
+          {message.text}
+        </Alert>
+      </Flex>
+    )
+  }
+
+  switch (true) {
+    case !init.isInitialized && cu.addr === address:
+      return Banner(status.notInitialized)
+    case akas.balance < 0 && cu.addr === address:
+      return Banner(status.noAkas)
+    default:
+      return null
+  }
+}
+
+export function Page() {
+  const address = useAddress()
+  const [cu] = useCurrentUser()
+  if (address == null) return <div>Not Found</div>
+
+  return (
+    <Base>
+      <Box p="4">
+        <AuthCluster />
+        <Flex mb="4">
+          <Center>
+            <Text mr="4" fontSize="2xl" color="purple.500">
+              Account:{" "}
+              <Text display="inline" color="black" fontWeight="bold">
+                {address}
+              </Text>
+            </Text>
+          </Center>
+          {address === cu.addr && (
+            <Center>
+              <Badge ml="4" variant="outline" colorScheme="orange">
+                You
+              </Badge>
+            </Center>
+          )}
+        </Flex>
+        <Suspense fallback={null}>
+          <InfoBanner address={address} />
+        </Suspense>
+        <Flex>
+          <Box>
+            <InitCluster address={address} />
+          </Box>
+          <Box ml="4">
+            <BalanceCluster address={address} />
+          </Box>
+          {cu.addr === address && cu.addr === STORE_ADDRESS && (
+            <Box ml="4">
+              <Suspense fallback={null}>
+                <MintButton address={address} />
+              </Suspense>
+            </Box>
+          )}
+        </Flex>
+        <Tabs colorScheme="pink">
+          <TabList>
+            <Tab fontSize="2xl">
+              <HStack>
+                <Image src={Cookie} />
+                <Box>Items Shop</Box>
+              </HStack>
+              <Suspense fallback={null}>
+                <MarketItemsCount address={address} />
+              </Suspense>
+            </Tab>
+            <Tab fontSize="2xl">
+              <HStack>
+                <Image src={BackPack} />
+                <Box>{cu.addr === address ? "My" : "User"} Items</Box>
+              </HStack>
+              <Suspense fallback={null}>
+                <AccountItemsCount address={address} />
+              </Suspense>
+            </Tab>
+          </TabList>
+
+          <TabPanels>
+            <TabPanel>
+              <MarketItemsCluster address={STORE_ADDRESS} />
+            </TabPanel>
+            <TabPanel>
+              <AccountItemsCluster address={address} />
+            </TabPanel>
+          </TabPanels>
+        </Tabs>
+      </Box>
+    </Base>
+  )
+}
